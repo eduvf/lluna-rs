@@ -1,8 +1,7 @@
 // repl.rs
 
 use rustyline::Editor;
-use crate::read::eval_str;
-use crate::exec::Env;
+use crate::exec::{Env, eval_str};
 
 pub fn repl(env: &mut Env) {
     let mut readline: Editor<()> = Editor::<()>::new().expect("Failed to load editor");
