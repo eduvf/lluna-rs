@@ -1,20 +1,13 @@
 // read.rs
 
-use std::{iter::Peekable, str::Chars};
-
-pub enum Expr {
+#[derive(Debug)]
+pub enum Tok {
+    NewLine(),
+    Paren(char),
+    Str(String),
+    Key(String),
     Int(i32),
     Flt(f32),
-    Sym(String),
-    List(Vec<Expr>),
-    Func(fn(&[Expr]) -> Result<Expr, ()>)
-}
-
-pub enum Tok {
-    Paren(char),
-    Int(i32),
-    Sym(String),
-    Atom(char)
 }
 
 pub fn lex(code: &str) -> Vec<Tok> {
@@ -23,36 +16,62 @@ pub fn lex(code: &str) -> Vec<Tok> {
 
     while let Some(c) = iter.next() {
         match c {
+            ',' => {
+                // comment
+                while let Some(next) = iter.peek() {
+                    match next {
+                        '\n' => break,
+                        _ => iter.next()
+                    };
+                }
+            }
+            '\n' | ';' => {
+                // new line
+                tokens.push(Tok::NewLine())
+            }
             '(' | ')' => {
-                tokens.push(Tok::Paren(c));
-                println!("Paren: {}", c)
-            },
-            '0'..='9' => {
-                tokens.push(scan_num(c, &mut iter));
-            },
-            'a'..='z' => {
-                todo!()
+                // parenthesis
+                tokens.push(Tok::Paren(c))
             }
-            _ => {
-                tokens.push(Tok::Atom(c));
-                println!("{}", c)
+            '\'' => {
+                // string
+                let mut s = String::new();
+                while let Some(ch) = iter.next() {
+                    match ch {
+                        '\\' => s.push(iter.next().expect("Escaped EOF")),
+                        '\'' => break,
+                        _ => s.push(ch)
+                    }
+                }
+                tokens.push(Tok::Str(s))
             }
+            '!'..='~' => {
+                // number or keyword
+                let mut s = c.to_string();
+                while let Some(ch) = iter.peek() {
+                    match ch {
+                        '!'..='&' | '*'..='+' | '-'..=':' | '<'..='~' => {
+                            s.push(*ch);
+                            iter.next();
+                        },
+                        _ => break
+                    }
+                }
+                tokens.push(num_or_key(s))
+            }
+            _ => ()
         }
     }
+    println!("{:?}", tokens);
     return tokens;
 }
 
-fn scan_num(c: char, iter: &mut Peekable<Chars>) -> Tok {
-    let mut num_str = c.to_string();
-    while let Some(d) = iter.peek() {
-        match d {
-            '0'..='9' => {
-                num_str.push(*d);
-                iter.next();
-            },
-            _ => break
+fn num_or_key(s: String) -> Tok {
+    if s.chars().all(|c| c == '-' || c == '.' || c.is_ascii_digit()) {
+        if s.contains('.') {
+            return Tok::Flt(s.parse::<f32>().expect("Failed to parse as float"))
         }
+        return Tok::Int(s.parse::<i32>().expect("Failed to parse as integer"))
     }
-    println!("Int: {}", num_str);
-    Tok::Int(num_str.parse::<i32>().unwrap())
+    return Tok::Key(s);
 }

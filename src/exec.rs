@@ -1,6 +1,6 @@
 // exec.rs
 
-use std::collections::HashMap;
+// use std::collections::HashMap;
 use crate::read;
 // pub struct Env<'a> {
 //     data: HashMap<String, Expr>,
