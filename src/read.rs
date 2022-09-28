@@ -101,6 +101,7 @@ fn parse_expr(iter: &mut core::iter::Peekable<core::slice::Iter<Tok>>) -> Expr {
                 let mut vec = vec![];
                 
                 if iter.peek() == Some(&&Tok::NewLine()) {
+                    // multi-expression
                     iter.next(); // advance NL
                     let mut inner_vec = vec![];
 
@@ -120,9 +121,10 @@ fn parse_expr(iter: &mut core::iter::Peekable<core::slice::Iter<Tok>>) -> Expr {
                         }
                     }
                 } else {
+                    // single expression
                     while let Some(new_t) = iter.peek() {
                         match new_t {
-                            Tok::NewLine() => {iter.next();},
+                            Tok::NewLine() => {iter.next();}
                             Tok::Paren(')') => break,
                             _ => vec.push(parse_expr(iter))
                         }
@@ -135,6 +137,7 @@ fn parse_expr(iter: &mut core::iter::Peekable<core::slice::Iter<Tok>>) -> Expr {
             _ => Expr::Atom(t.clone())
         }
     } else {
+        // empty expr (== nil)
         return Expr::Expr(vec![]);
     }
 }
