@@ -1,6 +1,8 @@
 // read.rs
 
-#[derive(Debug)]
+// Lexer ///////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Tok {
     NewLine(),
     Paren(char),
@@ -10,7 +12,7 @@ pub enum Tok {
     Flt(f32),
 }
 
-pub fn lex(code: &str) -> Vec<Tok> {
+fn lex(code: &str) -> Vec<Tok> {
     let mut tokens: Vec<Tok> = vec![];
     let mut iter = code.chars().peekable();
 
@@ -38,7 +40,8 @@ pub fn lex(code: &str) -> Vec<Tok> {
                 let mut s = String::new();
                 while let Some(ch) = iter.next() {
                     match ch {
-                        '\\' => s.push(iter.next().expect("Escaped EOF")),
+                        '\\' if iter.peek() == Some(&'\'') =>
+                            s.push(iter.next().expect("")),
                         '\'' => break,
                         _ => s.push(ch)
                     }
@@ -67,11 +70,79 @@ pub fn lex(code: &str) -> Vec<Tok> {
 }
 
 fn num_or_key(s: String) -> Tok {
-    if s.chars().all(|c| c == '-' || c == '.' || c.is_ascii_digit()) {
+    if s.starts_with(|c: char| c == '-' || c == '.' || c.is_ascii_digit())
+        && s.find(|c: char| c.is_ascii_digit()).is_some()
+    {
         if s.contains('.') {
             return Tok::Flt(s.parse::<f32>().expect("Failed to parse as float"))
         }
         return Tok::Int(s.parse::<i32>().expect("Failed to parse as integer"))
     }
     return Tok::Key(s);
+}
+
+// Parser //////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Clone)]
+pub enum Expr {
+    Atom(Tok),
+    Expr(Vec<Expr>)
+}
+
+fn parse(tokens: Vec<Tok>) -> Expr {
+    let mut iter = tokens.iter().peekable();
+    return parse_expr(&mut iter);
+}
+
+fn parse_expr(iter: &mut core::iter::Peekable<core::slice::Iter<Tok>>) -> Expr {
+    if let Some(t) = iter.next() {
+        match t {
+            Tok::Paren('(') => {
+                let mut vec = vec![];
+                
+                if iter.peek() == Some(&&Tok::NewLine()) {
+                    iter.next(); // advance NL
+                    let mut inner_vec = vec![];
+
+                    while let Some(new_t) = iter.peek() {
+                        match new_t {
+                            Tok::NewLine() | Tok::Paren(')') => {
+                                if !inner_vec.is_empty() {
+                                    vec.push(Expr::Expr(inner_vec.clone()));
+                                    inner_vec.clear();
+                                }
+                                if new_t == &&Tok::Paren(')') {
+                                    break;
+                                }
+                                iter.next();
+                            }
+                            _ => inner_vec.push(parse_expr(iter))
+                        }
+                    }
+                } else {
+                    while let Some(new_t) = iter.peek() {
+                        match new_t {
+                            Tok::NewLine() => {iter.next();},
+                            Tok::Paren(')') => break,
+                            _ => vec.push(parse_expr(iter))
+                        }
+                    }
+                }
+                iter.next(); // advance ')'
+                return Expr::Expr(vec);
+            },
+            Tok::Paren(')') => panic!("Missing closing parenthesis"),
+            _ => Expr::Atom(t.clone())
+        }
+    } else {
+        return Expr::Expr(vec![]);
+    }
+}
+
+// Reader //////////////////////////////////////////////////////////////////////
+
+pub fn read(code: &str) -> Expr {
+    let ast = parse(lex(code));
+    println!("{:?}", ast);
+    return ast;
 }
