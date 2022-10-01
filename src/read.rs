@@ -83,7 +83,7 @@ fn num_or_key(s: String) -> Tok {
 
 // Parser //////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Atom(Tok),
     Expr(Vec<Expr>)
